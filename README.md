@@ -58,6 +58,7 @@ let f = {
 
 ```javascript
 const validate = validator({ // object with custom error messages
+  // They are indexed by the name of the function so you should name functions that return error messages
   asyncValidator: (currentField, wholeModel, relatedFields) => 'async wrong',
 })
 
@@ -104,3 +105,90 @@ function send () {
 ```
 
 3. It works!
+
+## Reserved field object properties
+
+Each field object can contain as many properties as your custom input need, but it has some reserved properties:
+
+```javascript
+{
+  $val, // value of the field
+  $el, // input HTML element to put focus on in case of the error (you can turn this off but it's required for accessibility)
+  $errorMessages, // array of indexed error messages. If there is no error - you will see an empty string
+  $related, // array of fields that are related to the validation of the current field
+  $valid, // array of indexed values: [true, false, null] - first validator returned true, second one returned false, third is currently pending
+  $validators, // array of validator functions. They should only return true or false. You can use a function that returns promise for async validation
+  $dirty, // it is set to true if you try to verify the form. You can use it to display your error messages
+}
+```
+
+## Example of custom input component
+
+```pug
+div.container
+  label.ellipses(
+    for='{id}'
+  ) {label}
+    +if('required')
+      i(aria-hidden='true' title='required') *
+      i.visuallyHidden required
+  +if('!f.type')
+    input(
+      id='{id}'
+      required='{required}'
+      bind:value='{f.$val}'
+      on:blur='{onBlur}'
+      bind:this='{el}'
+      aria-describedby='{localErrorId}'
+    )
+    p.ellipses.error(id='{errorId}')
+      +each('errorMessages as message'): span {message}
+    +elseif('f.type === "password"'): input(
+      type='password'
+      id='{id}'
+      required='{required}'
+      bind:value='{f.$val}'
+      on:blur='{onBlur}'
+      bind:this='{el}'
+      aria-describedby='{localErrorId}'
+    )
+    p.ellipses.error(id='{errorId}')
+      +each('errorMessages as message'): span {message}
+```
+
+```javascript
+import randomId from '/utils/random-id.js'
+import { onMount } from 'svelte'
+
+export let id = randomId('input')
+export let errorId = randomId('error')
+export let f = {}
+
+let el
+
+$: errorMessages = f.$errorMessages && f.$errorMessages.length && f.$dirty
+  ? f.$errorMessages
+    .reduce((messages, message) => {
+      if (message) {
+        messages.push(message)
+      }
+      return messages
+    }, [])
+    .map((message, i) => i ? `, ${message}` : message)
+  : []
+
+$: localErrorId = errorMessages.length ? errorId : undefined
+
+$: required = f.$validators ? f.$validators.some(validator => validator.name === 'required') : undefined
+$: label = f.label ? f.label : ''
+
+function onBlur () {
+  if (!f.$dirty) {
+    f.$dirty = true
+  }
+}
+
+onMount(() => {
+  f.$el = el
+})
+```
