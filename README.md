@@ -3,7 +3,7 @@ Asynchronous, reactive, super flexible validation library for svelte
 
 > This is work in progress. Please contribute with your thoughts and code!
 
-1. Create your modal (we support nested modals)
+1. Create your model (we support nested models)
 
 ```javascript
 import { validator, verify, data } from 'svelidate/validation'
